@@ -30,6 +30,7 @@ jupyter-core==4.7.1
 jupyterlab-pygments==0.1.2
 jupyterlab-widgets==1.0.0
 MarkupSafe==1.1.1
+matplotlib
 mistune==0.8.4
 nbclient==0.5.1
 nbconvert==6.0.7
