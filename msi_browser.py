@@ -7,20 +7,18 @@ from msi.dir_func import *
 from msi.msi_image_data import MSIImageData
 from msi.msi_defs import *
 
-DEBUG = True
-
 
 @st.cache
-def load_json_data(json_file):
-    print(f"loading data {json_file}")
-    return json.load(json_file)
+def load_json_data(json_data):
+    print(f"loading json data {json_data}")
+    return json.load(json_data)
 
 
 @st.cache
 def load_json_file(data_path):
-    print(f"loading data {data_path}")
-    with open(data_path) as json_file:
-        return load_json_data(json_file)
+    print(f"loading json file {data_path}")
+    with open(data_path) as json_data:
+        return load_json_data(json_data)
 
 
 def load_data_urls(filename):
@@ -30,6 +28,7 @@ def load_data_urls(filename):
         for x in f:
             data_urls.append(x.rstrip())
     return data_urls
+
 
 st.title('msi viewer v0.0.1')
 
@@ -57,12 +56,6 @@ def get_alpha():
     return 100.0 / int(aplha_slider) if int(aplha_slider) > 0 else 0.0
 
 
-@st.cache
-def load_json_file(data_path):
-    with open(data_path) as json_file:
-        return load_json_data(json_file)
-
-
 def plot_data():
     xyzi_data = None
     msiImageData = MSIImageData()
@@ -75,7 +68,7 @@ def plot_data():
     else:
         selection = get_preselected()
         if selection:
-            st.write('File use: ' + selection)
+            st.write('Selection: ' + selection)
             xyzi_data = load_json_file(selection)
         else:
             st.write("MSI data not found")

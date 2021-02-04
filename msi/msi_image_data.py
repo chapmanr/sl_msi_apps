@@ -2,6 +2,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 
+
 class MSIImageData:
     def __init__(self):
         self.xyzi_data = []
