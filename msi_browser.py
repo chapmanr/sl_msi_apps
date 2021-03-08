@@ -4,123 +4,130 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import json
+import os
 
-from msi.dir_func import *
+
 from msi.msi_image_data import MSIImageData
-from msi.msi_defs import *
 
 
-DEBUG = True
-
-data_file_url = "datafiles.txt"
-if DEBUG == True:
-    data_file_url = "testdatafiles.txt"
-
-st.title('msi viewer v0.0.1')
-
-def load_data_urls(filename):
-    data_urls = []
-    if exists_file(filename):
-        f = open(filename, "r")
-        for x in f:
-            data_urls.append(x.rstrip())
-    return data_urls
+import plotly.express as px
 
 
-uploaded_file = st.sidebar.file_uploader("Upload Files",type=['json','txt', 'csv'])
-if uploaded_file is not None:
-    file_details = {"FileName":uploaded_file.name,"FileType":uploaded_file.type,"FileSize":uploaded_file.size}
-    st.write(file_details)
 
-add_selectbox = st.sidebar.selectbox(
-    "pre-selected data",
-    load_data_urls(data_file_url))
+class MSI2DBrowser:
+
+    def __init__(self):
+        self.title = 'msi 2D viewer v0.0.2'
+        self.data_file_url = "datafiles.txt"
+        
+   
+    
+    def load_cmaps(self):
+        cmap_labels = ['viridis', 'plasma', 'inferno', 'magma', 'cividis']
+        return cmap_labels
+    
+    def load_json_data(self, json_data):
+        jdata = json.load(json_data)
+        xyzi_data = []
+        for item in jdata:
+            xyz = {"X":None, "Y":None, "Z":None, "I":None}
+            xyz['X'] = item['X']
+            xyz['Y'] = item['Y']
+            xyz['Z'] = item['Z']
+            xyz['I'] = item['I']
+            xyzi_data.append(xyz)
+        return xyzi_data
+
+    def load_json_file(self, data_path):
+        print("loading json data")        
+        with open(data_path) as json_data:
+            return self.load_json_data(json_data)        
+        return None
+
+    def select_dataset_file(self):
+        dataset_dir = './data'
+        filenames = os.listdir(dataset_dir)
+        # dropdown menu displaying all the files in dataset directory
+        selected_dataset = st.selectbox("",filenames)
+        return os.path.join(dataset_dir, selected_dataset)
+
+    
+
+    def get_alpha(self):
+        alpha = 0
+        if int(self.aplha_slider) > 0:
+            alpha = float(100 / int(self.aplha_slider))
+        return alpha
+
+    def check_for_correct_format(self):
+        selection = str(self.uploaded_file.name)
+        length = len(selection)
+        start = length - 5
+        if selection[start:length] == ".json":
+            return True
+        return False
+
+    def LoadData(self):
+        self.msiImageData = None
+        if self.uploaded_file is not None: 
+            if self.check_for_correct_format() == True:
+                xyzi_data = self.load_json_data(self.uploaded_file)
+                self.msiImageData = MSIImageData() 
+                self.msiImageData.LoadCachedData(xyzi_data)   
+                return True
+        return False
 
 
-def load_cmaps():
-    cmap_labels = ['viridis', 'plasma', 'inferno', 'magma', 'cividis']
-    return cmap_labels
-
-cmap_selectbox = st.sidebar.selectbox("color mapping", load_cmaps())
-
-number = st.sidebar.number_input('Select XiC', 0, 32)
-#threshold = st.sidebar.slider
-
-
-@st.cache
-def load_json_data(json_data):
-    jdata = json.load(json_data)
-    xyzi_data = []
-    for item in jdata:
-        xyz = {"X":None, "Y":None, "Z":None, "I":None}
-        xyz['X'] = item['X']
-        xyz['Y'] = item['Y']
-        xyz['Z'] = item['Z']
-        xyz['I'] = item['I']
-        xyzi_data.append(xyz)
-    return xyzi_data
-
-@st.cache
-def load_json_file(data_path):
-    print("loading json data")        
-    with open(data_path) as json_data:
-        return load_json_data(json_data)        
-    return None
-
-thresh_slider = st.sidebar.slider("Threshold data", 0, 250, 10)
-aplha_slider = st.sidebar.slider("Aplha setting", 0, 100, 90)
-
-def get_preselected():
-    selection = str(add_selectbox).rstrip()   
-    st.write("selection = " + selection)
-    length = len(selection)
-    start = length - 5  
-    if selection[start:length] == ".json":   
-        if(exists_file(selection)):
-            return selection    
-    return None
-
-
-def get_alpha():
-    alpha = 0
-    if int(aplha_slider) > 0:
-        alpha = float(100 / int(aplha_slider))
-    return alpha
-
-def plot_data():
-    xyzi_data = None
-    msiImageData = MSIImageData()    
-    if uploaded_file is None:     
-            selection = get_preselected()
-            if selection != None:
-                xyzi_data = load_json_file(selection)                     
+    def PlotData(self):
+        if( self.msiImageData is not None):   
+            fig, iy = self.msiImageData.PlotImage(str(self.cmap_selectbox), int(self.number), float(self.thresh_slider), self.get_alpha())
+            if( fig != None):
+                st.write(fig)  
+                st.subheader("XiC Data Channel " + str(self.number))
+                chart_data = pd.DataFrame(iy,  columns=['xic']) 
+                st.area_chart(chart_data)
             else:
-                st.write("MSI data not found : ")
-    else:
-        xyzi_data = load_json_data(uploaded_file)
-
-    if( xyzi_data != None):                   
-        msiImageData.LoadCachedData(xyzi_data)  
-        fig, iy = msiImageData.PlotImage(str(cmap_selectbox), int(number), float(thresh_slider), get_alpha())
-        if( fig != None):
-            st.write(fig)  
-            st.subheader("XiC Data Channel " + str(number))
-            chart_data = pd.DataFrame(iy,  columns=['xic']) 
-            st.area_chart(chart_data)
+                st.write("Plot data failure")
         else:
-            st.write("Plot data failure")
-    else:
-        st.write("Null data loaded")   
+            st.write("Null data loaded")   
     
+    def RenderFileUploader(self):
+        self.uploaded_file = st.sidebar.file_uploader("Upload Files",type=['json','txt', 'csv'])
+        self.add_selectbox=None
+        
+                       
+    def RenderCommonSideBarWidgets(self):
+        self.number = st.sidebar.number_input('Select XiC', 0, 32)
+        #threshold = st.sidebar.slider
+        self.thresh_slider = st.sidebar.slider("Threshold data", 0, 100, 10)
+        self.aplha_slider = st.sidebar.slider("Opacity setting", 0, 100, 90)
 
-    
 
-plot_data()
+    def RenderSideBarWidgets(self):        
+        self.cmap_selectbox = st.sidebar.selectbox("color mapping", self.load_cmaps())
+        self.RenderCommonSideBarWidgets()
+
+
+    def RenderPage(self):
+        st.title(self.title)
+
+
+        #self.get_preselected
+        self.RenderFileUploader()
+        self.RenderSideBarWidgets()
+        if self.LoadData() == True:              
+            self.PlotData()
+        else :
+            if self.uploaded_file is not None:
+                st.error("Load correct data format e.g. /data/example_2d_data.json")
+            else :
+                st.error("Load a file first")
 
 
 
-    #else:
-    #   st.write(add_selectbox + "  this file does not exist")
+if __name__ == "__main__":
+    msi2d = MSI2DBrowser()
+    msi2d.RenderPage()
 
 
     
