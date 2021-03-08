@@ -1,5 +1,4 @@
-../data/example_data.json
-../data/example_data.json
-../data/example_data.json
-../data/example_data.json
-
+data/example_data_1.json
+data/example_data_2.json
+data/example_data_3.json
+data/example_data_4.json
